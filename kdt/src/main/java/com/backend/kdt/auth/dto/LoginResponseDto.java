@@ -1,6 +1,5 @@
 package com.backend.kdt.auth.dto;
 
-import com.backend.kdt.auth.entity.Platform;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,11 +11,9 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoginResponse {
+public class LoginResponseDto {
     private Long userId;
     private String email;
     private String name;
     private String profile;
-    private String birthYear;
-    private Platform platform;
 }

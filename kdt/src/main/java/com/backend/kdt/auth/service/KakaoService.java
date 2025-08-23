@@ -1,8 +1,7 @@
 package com.backend.kdt.auth.service;
 
 import com.backend.kdt.auth.dto.KakaoDTO;
-import com.backend.kdt.auth.entity.Gender;
-import com.backend.kdt.auth.entity.Platform;
+import com.backend.kdt.auth.dto.LoginResponseDto;
 import com.backend.kdt.auth.entity.User;
 import com.backend.kdt.auth.repository.UserRepository;
 import com.backend.kdt.auth.security.CustomUserDetails;
@@ -46,18 +45,57 @@ public class KakaoService {
 
     private static final String KAKAO_AUTH_URI = "https://kauth.kakao.com";
     private static final String KAKAO_API_URI = "https://kapi.kakao.com";
-    private static final String CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
 
     public String getKakaoLoginUrl() {
         return String.format("%s/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code",
                 KAKAO_AUTH_URI, kakaoClientId, kakaoRedirectUrl);
     }
 
-    public KakaoDTO getKakaoUserInfo(String code) {
+    /**
+     * 카카오 로그인/회원가입 처리
+     */
+    @Transactional
+    public LoginResponseDto processKakaoLogin(String code) {
         validateAuthorizationCode(code);
 
         String accessToken = getAccessToken(code);
-        return getUserInfoWithToken(accessToken);
+        KakaoDTO kakaoDTO = getUserInfoWithToken(accessToken);
+
+        // 기존 사용자 확인
+        User user = userRepository.findByKakaoId(kakaoDTO.getId())
+                .orElseGet(() -> registerNewUser(kakaoDTO));
+
+        // 인증 처리
+        authenticateUser(user);
+
+        return LoginResponseDto.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .profile(user.getProfile())
+                .build();
+    }
+
+    /**
+     * 새 사용자 등록
+     */
+    private User registerNewUser(KakaoDTO kakaoDTO) {
+        // 이메일 중복 체크 (선택사항)
+        if (kakaoDTO.getAccountEmail() != null &&
+                userRepository.existsByEmail(kakaoDTO.getAccountEmail())) {
+            throw new IllegalStateException("이미 가입된 이메일입니다.");
+        }
+
+        User newUser = User.builder()
+                .kakaoId(kakaoDTO.getId())
+                .email(kakaoDTO.getAccountEmail())
+                .name(kakaoDTO.getName())
+                .profile(kakaoDTO.getProfileImageUrl())
+                .point(0L)
+                .watched(false)
+                .build();
+
+        return userRepository.save(newUser);
     }
 
     private void validateAuthorizationCode(String code) {
@@ -168,29 +206,10 @@ public class KakaoService {
         }
     }
 
-    @Transactional
-    public void registerKakaoUser(String email, String nickname, String profileUrl, Gender gender, String birthYear) {
-        if (nickname == null || nickname.isBlank()) {
-            throw new IllegalArgumentException("닉네임 정보가 없습니다.");
-        }
-
-        User user = User.builder()
-                .name(nickname) // 카카오는 name = nickname 간주
-                .email(email)
-                .platform(Platform.KAKAO)
-                .gender(gender)
-                .birthYear(birthYear)
-                .profile(profileUrl)
-                .build();
-
-        userRepository.save(user);
-    }
-
-    public void authenticateUser(User user) {
+    private void authenticateUser(User user) {
         UserDetails userDetails = new CustomUserDetails(user);
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
-
 }

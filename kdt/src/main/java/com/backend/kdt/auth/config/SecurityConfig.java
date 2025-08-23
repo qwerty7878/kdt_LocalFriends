@@ -83,7 +83,15 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/h2-console/**").permitAll()
                         .anyRequest().permitAll() // 🔓 모든 요청 허용
+                )
+                // H2 콘솔의 iframe 사용을 위한 헤더 설정
+                .headers(headers -> headers
+                        .frameOptions().disable()  // 모든 frame 옵션 비활성화
+                        .contentTypeOptions().disable()  // 콘텐츠 타입 체크 비활성화
+                        .httpStrictTransportSecurity(hstsConfig -> hstsConfig.disable())
+                        .and()
                 )
                 .exceptionHandling(config -> config
                         .authenticationEntryPoint(new Http403ForbiddenEntryPoint())
@@ -100,9 +108,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "http://localhost:8080",
-                "http://localhost:5173",
-                "http://3.37.245.108:8080",
-                "https://3.37.245.108:8080"
+                "http://localhost:5173"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));

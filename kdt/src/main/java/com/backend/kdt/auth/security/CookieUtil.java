@@ -1,8 +1,8 @@
 package com.backend.kdt.auth.security;
 
-
 import com.backend.kdt.auth.entity.CookieRule;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import org.springframework.http.ResponseCookie;
@@ -41,5 +41,31 @@ public class CookieUtil {
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
+    }
+
+    // 임시 사용자 ID 쿠키 추가
+    public void addTempUserCookie(HttpServletResponse response, String tempUserId, boolean secure) {
+        ResponseCookie cookie = ResponseCookie.from(CookieRule.TEMP_USER_ID.getValue(), tempUserId)
+                .httpOnly(true)
+                .secure(secure)
+                .path("/")
+                .sameSite("None")
+                .maxAge(1800) // 30분
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
+    }
+
+    // 임시 사용자 ID 쿠키에서 값 읽기
+    public String getTempUserIdFromCookie(HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            return resolveTokenFromCookie(request.getCookies(), CookieRule.TEMP_USER_ID);
+        }
+        return "";
+    }
+
+    // 임시 사용자 ID 쿠키 삭제
+    public void clearTempUserCookie(HttpServletResponse response, boolean secure) {
+        clearJwtCookie(response, CookieRule.TEMP_USER_ID.getValue(), secure);
     }
 }

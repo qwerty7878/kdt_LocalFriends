@@ -1,5 +1,6 @@
 package com.backend.kdt.auth.entity;
 
+import com.amazonaws.util.Platform;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -30,23 +31,22 @@ public class User {
     @Column(name = "user_id")
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "platform", length = 20, nullable = false)
-    private Platform platform;
+    @Column(name = "kakao_id", nullable = false, unique = true)
+    private Long kakaoId;
 
-    @Column(name = "email", length = 100, nullable = false, unique = true)
+    @Column(name = "email", length = 100, nullable = true, unique = true)
     private String email;
 
     @Column(name = "name", length = 20, nullable = false, unique = true)
     private String name;
 
-    @Column(name = "birth_Year", length = 4, nullable = false)
-    private String birthYear;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "gender", length = 20, nullable = false)
-    private Gender gender;
-
     @Column(name = "profile", nullable = true, columnDefinition = "TEXT")
     private String profile;
+
+    @Column(name = "point")
+    private Long point;
+
+    @Column(name = "watched", nullable = false)
+    @Builder.Default
+    private Boolean watched = false;
 }

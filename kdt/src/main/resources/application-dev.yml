@@ -5,12 +5,17 @@ spring:
     username: sa
     password:
     hikari:
-      maximum-pool-size: 1
-      minimum-idle: 1
+      maximum-pool-size: 10
+      minimum-idle: 5
       idle-timeout: 30000
       max-lifetime: 1800000
       connection-timeout: 10000
       leak-detection-threshold: 2000
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Seoul
 
   jpa:
     hibernate:
@@ -18,8 +23,8 @@ spring:
     show-sql: true
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
-
   h2:
     console:
       enabled: true

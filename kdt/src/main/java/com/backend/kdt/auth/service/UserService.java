@@ -1,6 +1,6 @@
 package com.backend.kdt.auth.service;
 
-import com.backend.kdt.auth.dto.LoginResponse;
+import com.backend.kdt.auth.dto.LoginResponseDto;
 import com.backend.kdt.auth.entity.User;
 import com.backend.kdt.auth.repository.UserRepository;
 import com.backend.kdt.auth.security.CustomUserDetails;
@@ -30,18 +30,25 @@ public class UserService {
         return userRepository.findByEmail(email).orElse(null);
     }
 
-    public void setLoginCookie(HttpServletResponse response, String email) {
-        jwtService.addAccessTokenCookie(response, email); // 내부적으로 role은 고정되었거나 기본값일 수 있음
+    public User getUserByKakaoId(Long kakaoId) {
+        return userRepository.findByKakaoId(kakaoId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid kakao ID: " + kakaoId));
     }
 
-    public LoginResponse loginResponse(User user) {
-        return LoginResponse.builder()
+    public void setLoginCookie(HttpServletResponse response, String email) {
+        jwtService.addAccessTokenCookie(response, email);
+    }
+
+    public void clearAccessTokenCookie(HttpServletResponse response) {
+        jwtService.clearAccessTokenCookie(response);
+    }
+
+    public LoginResponseDto loginResponse(User user) {
+        return LoginResponseDto.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .profile(user.getProfile())
-                .birthYear(user.getBirthYear())
-                .platform(user.getPlatform())
                 .build();
     }
 
@@ -54,8 +61,15 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteUsers(String email) {
+    public void deleteUser(String email) {
         User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다"));
+        userRepository.delete(user);
+    }
+
+    @Transactional
+    public void deleteUserByKakaoId(Long kakaoId) {
+        User user = userRepository.findByKakaoId(kakaoId)
                 .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다"));
         userRepository.delete(user);
     }
@@ -73,6 +87,16 @@ public class UserService {
         if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
             String email = ((UserDetails) authentication.getPrincipal()).getUsername();
             return getUserByEmail(email).getId();
+        }
+        throw new IllegalArgumentException("User is not authenticated.");
+    }
+
+    public User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername();
+            return getUserByEmail(email);
         }
         throw new IllegalArgumentException("User is not authenticated.");
     }
