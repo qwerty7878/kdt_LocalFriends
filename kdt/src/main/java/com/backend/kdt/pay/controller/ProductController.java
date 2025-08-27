@@ -2,9 +2,13 @@ package com.backend.kdt.pay.controller;
 
 import com.backend.kdt.auth.dto.ApiResponse;
 import com.backend.kdt.pay.dto.DonationRequestDto;
+import com.backend.kdt.pay.dto.DonationResponseDto;
+import com.backend.kdt.pay.dto.ExchangeResponseDto;
+import com.backend.kdt.pay.dto.GameCompletionResponseDto;
 import com.backend.kdt.pay.dto.ProductDetailDto;
 import com.backend.kdt.pay.dto.ProductDto;
 import com.backend.kdt.pay.dto.ProductExchangeRequestDto;
+import com.backend.kdt.pay.dto.WatchCompletionResponseDto;
 import com.backend.kdt.pay.entity.TransactionType;
 import com.backend.kdt.pay.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +16,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,20 +29,26 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
-@Tag(name = "상품 API", description = "상품 조회 및 교환 관련 API")
+@Tag(name = "[구현완료] 상품 API", description = "기부, 특산품 구매, 게임/시청 보상")
 public class ProductController {
 
     private final ProductService productService;
 
-//    특산물 구매 + 갯수
-@PostMapping("/{productId}/exchange")
-@Operation(summary = "상품 교환", description = "사용자가 보유한 포인트로 상품을 교환합니다.")
-public ResponseEntity<ApiResponse<String>> exchangeProduct(
-        @Parameter(description = "상품 ID") @PathVariable Long productId,
-        @RequestBody ProductExchangeRequestDto request) {
-    productService.exchangeProduct(request.getUserId(), productId, request.getQuantity());
-    return ResponseEntity.ok(ApiResponse.onSuccess("상품 교환 완료"));
-}
+    // 특산물 구매 + 갯수 + COSMETIC 아이템 지급
+    @PostMapping("/{productId}/exchange")
+    @Operation(summary = "상품 교환", description = "사용자가 보유한 포인트로 상품을 교환하고 치장품을 받습니다.")
+    public ResponseEntity<ApiResponse<ExchangeResponseDto>> exchangeProduct(
+            @Parameter(description = "상품 ID") @PathVariable Long productId,
+            @RequestBody ProductExchangeRequestDto request) {
+        try {
+            ExchangeResponseDto response = productService.exchangeProductWithResponse(
+                    request.getUserId(), productId, request.getQuantity());
+            return ResponseEntity.ok(ApiResponse.onSuccess(response));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.onFailure("EXCHANGE_FAILED", e.getMessage()));
+        }
+    }
 
     @GetMapping
     @Operation(summary = "상품 목록 조회", description = "카테고리에 따른 상품 리스트를 조회합니다.")
@@ -55,32 +66,21 @@ public ResponseEntity<ApiResponse<String>> exchangeProduct(
         return ResponseEntity.ok(ApiResponse.onSuccess(product));
     }
 
-//    @Operation(summary = "구매한 상품 보관함 조회", description = "사용자가 교환한 상품 목록을 전체 조회합니다.")
-//    @GetMapping("/my")
-//    public ResponseEntity<ApiResponse<List<ProductDetailDto>>> getMyProducts(
-//            @Parameter(description = "사용자 ID") @RequestParam Long userId) {
-//        List<ProductDetailDto> products = productService.getUserProductHistory(userId);
-//        return ResponseEntity.ok(ApiResponse.onSuccess(products));
-//    }
-//
-//    @GetMapping("/exchanges/{exchangeId}/detail")
-//    @Operation(summary = "교환 완료 상품 상세 조회", description = "상품 교환 내역 ID로 상세 정보를 조회합니다.")
-//    public ResponseEntity<ApiResponse<ProductDetailDto>> getProductDetailByExchange(
-//            @Parameter(description = "교환 ID") @PathVariable Long exchangeId) {
-//        ProductDetailDto detail = productService.getProductDetailByExchange(exchangeId);
-//        return ResponseEntity.ok(ApiResponse.onSuccess(detail));
-//    }
-
-
-//    기부하기
-@PostMapping("/{productId}/donate")
-@Operation(summary = "기부하기", description = "사용자가 보유한 포인트로 기부합니다.")
-public ResponseEntity<ApiResponse<String>> donateProduct(
-        @Parameter(description = "상품 ID") @PathVariable Long productId,
-        @RequestBody DonationRequestDto request) {
-    productService.donateProduct(request.getUserId(), productId, request.getDonationAmount());
-    return ResponseEntity.ok(ApiResponse.onSuccess("기부 완료"));
-}
+    // 기부하기 + COSMETIC 아이템 지급
+    @PostMapping("/{productId}/donate")
+    @Operation(summary = "기부하기", description = "사용자가 보유한 포인트로 기부하고 치장품을 받습니다.")
+    public ResponseEntity<ApiResponse<DonationResponseDto>> donateProduct(
+            @Parameter(description = "상품 ID") @PathVariable Long productId,
+            @RequestBody DonationRequestDto request) {
+        try {
+            DonationResponseDto response = productService.donateProductWithResponse(
+                    request.getUserId(), productId, request.getDonationAmount());
+            return ResponseEntity.ok(ApiResponse.onSuccess(response));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.onFailure("DONATION_FAILED", e.getMessage()));
+        }
+    }
 
     @Operation(summary = "기부 내역 조회", description = "사용자의 기부 내역을 조회합니다.")
     @GetMapping("/my/donations")
@@ -90,25 +90,34 @@ public ResponseEntity<ApiResponse<String>> donateProduct(
         return ResponseEntity.ok(ApiResponse.onSuccess(donations));
     }
 
-//    영상 시청
-    @Operation(summary = "시청 완료 처리", description = "영상 시청을 완료하고 포인트를 지급합니다. (1회만 가능)")
+    // 영상 시청 + CONSUMPTION 아이템 지급
     @PostMapping("/complete-watching")
-    public ResponseEntity<ApiResponse<String>> completeWatching(
-            @Parameter(description = "유저 ID") @RequestParam Long userId) {
+    @Operation(summary = "시청 완료", description = "시청 완료 시 소모품 3개를 지급합니다. (1회 제한)")
+    public ResponseEntity<ApiResponse<WatchCompletionResponseDto>> completeWatching(
+            @Parameter(description = "사용자 ID") @RequestParam Long userId) {
         try {
-            productService.completeWatching(userId);
-            return ResponseEntity.ok(ApiResponse.onSuccess("시청 완료! 포인트가 지급되었습니다."));
+            WatchCompletionResponseDto response = productService.completeWatchingWithResponse(userId);
+            return ResponseEntity.ok(ApiResponse.onSuccess(response));
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.onFailure("ALREADY_WATCHED", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.onFailure("ALREADY_COMPLETED", e.getMessage()));
         }
     }
-
     @Operation(summary = "시청 상태 조회", description = "유저의 시청 완료 여부를 조회합니다.")
     @GetMapping("/watch-status")
     public ResponseEntity<ApiResponse<Boolean>> getWatchStatus(
             @Parameter(description = "유저 ID") @RequestParam Long userId) {
         boolean isCompleted = productService.isWatchCompleted(userId);
         return ResponseEntity.ok(ApiResponse.onSuccess(isCompleted));
+    }
+
+
+    // 게임 완료 + COSMETIC 아이템 지급
+    @PostMapping("/complete-game")
+    @Operation(summary = "게임 완료", description = "게임 완료 시 치장품 1개를 지급합니다. (제한 없음)")
+    public ResponseEntity<ApiResponse<GameCompletionResponseDto>> completeGame(
+            @Parameter(description = "사용자 ID") @RequestParam Long userId) {
+        GameCompletionResponseDto response = productService.completeGame(userId);
+        return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 }
