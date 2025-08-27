@@ -1,20 +1,19 @@
 package com.backend.kdt.charge.controller;
 
 import com.backend.kdt.auth.dto.ApiResponse;
-import com.backend.kdt.charge.dto.ChargeRequestDto;
 import com.backend.kdt.charge.dto.ChargeResponseDto;
 import com.backend.kdt.charge.dto.ChargeTypeDto;
 import com.backend.kdt.charge.entity.ChargeType;
 import com.backend.kdt.charge.service.ChargeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/charge")
+@Tag(name = "[구현 완료] 충전 API", description = "4가지 코인 충전")
 public class ChargeController {
 
     private final ChargeService chargeService;
