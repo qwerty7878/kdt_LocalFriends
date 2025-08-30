@@ -37,9 +37,9 @@ spring:
 #    bucketName: ${AWS_S3_BUCKET_NAME}
 #    region: ${AWS_REGION}
 
-kakao:
-  client:
-    id: ${KAKAO_ID}
-    secret: ${KAKAO_SECRET}
-  redirect:
-    url: ${KAKAO_REDIRECT_URL}
+#kakao:
+#  client:
+#    id: ${KAKAO_ID}
+#    secret: ${KAKAO_SECRET}
+#  redirect:
+#    url: ${KAKAO_REDIRECT_URL}
