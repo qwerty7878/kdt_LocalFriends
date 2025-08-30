@@ -280,60 +280,6 @@ public class ProductService {
     }
 
     /**
-     * 게임 완료 처리 및 경험치 지급 (하루 3번 제한)
-     */
-    @Transactional
-    public GameCompletionResponseDto completeGame(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("유저 없음"));
-
-        // 오늘 날짜로 일일 게임 횟수 체크
-        LocalDate today = LocalDate.now();
-
-        // 오늘이 마지막 게임 날짜와 다르면 카운트 초기화
-        if (user.getLastGameDate() == null || !user.getLastGameDate().equals(today)) {
-            user.setDailyGameCount(0);
-            user.setLastGameDate(today);
-        }
-
-        // 일일 게임 제한 체크
-        if (user.getDailyGameCount() >= DAILY_GAME_LIMIT) {
-            throw new IllegalStateException("오늘 게임 완료 제한 횟수에 도달했습니다. (최대 3회)");
-        }
-
-        // 게임 횟수 증가
-        user.setDailyGameCount(user.getDailyGameCount() + 1);
-
-        // 기본 경험치 지급
-        long experienceGained = GAME_COMPLETION_EXPERIENCE;
-        String message = String.format("게임 완료! 경험치 %d를 획득했습니다.", GAME_COMPLETION_EXPERIENCE);
-
-        // 3번째 게임 완료 시 보너스 경험치
-        if (user.getDailyGameCount() == DAILY_GAME_LIMIT) {
-            experienceGained += BONUS_EXPERIENCE_3RD_GAME;
-            message = String.format("게임 완료! 경험치 %d + 보너스 %d를 획득했습니다! 오늘의 게임 완료 횟수가 모두 소진되었습니다.",
-                    GAME_COMPLETION_EXPERIENCE, BONUS_EXPERIENCE_3RD_GAME);
-        }
-
-        // User 엔티티 저장
-        userRepository.save(user);
-
-        // CharacterService를 통해 캐릭터에게 경험치 지급 (레벨업 자동 처리)
-        var updatedCharacter = characterService.addExperience(userId, experienceGained);
-
-        return GameCompletionResponseDto.builder()
-                .userId(userId)
-                .experienceGained((int) experienceGained)
-                .totalExperience(updatedCharacter.getExperience())
-                .currentLevel(updatedCharacter.getLevel())
-                .dailyGameCount(user.getDailyGameCount())
-                .remainingDailyGames(DAILY_GAME_LIMIT - user.getDailyGameCount())
-                .message(message)
-                .completedAt(LocalDateTime.now())
-                .build();
-    }
-
-    /**
      * 개별 상품 조회
      */
     @Cacheable(value = "product", key = "#productId")
@@ -360,66 +306,5 @@ public class ProductService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("유저 없음"));
         return user.getWatched();
-    }
-
-    /**
-     * 쓰다듬기 처리 및 경험치 지급 (하루 3번 제한)
-     */
-    @Transactional
-    public GameCompletionResponseDto petCharacter(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("유저 없음"));
-
-        // 오늘 날짜로 일일 쓰듬기 횟수 체크
-        LocalDate today = LocalDate.now();
-
-        // 오늘이 마지막 쓰다듬기 날짜와 다르면 카운트 초기화
-        if (user.getLastPetDate() == null || !user.getLastPetDate().equals(today)) {
-            user.setDailyPetCount(0);
-            user.setLastPetDate(today);
-        }
-
-        // 일일 쓰다듬기 제한 체크
-        if (user.getDailyPetCount() >= DAILY_PET_LIMIT) {
-            throw new IllegalStateException("오늘 쓰다듬기 제한 횟수에 도달했습니다. (최대 3회)");
-        }
-
-        // 쓰다듬기 횟수 증가
-        user.setDailyPetCount(user.getDailyPetCount() + 1);
-
-        // User 엔티티 저장
-        userRepository.save(user);
-
-        // CharacterService를 통해 캐릭터에게 경험치 지급
-        var updatedCharacter = characterService.addExperience(userId, PET_EXPERIENCE);
-
-        return GameCompletionResponseDto.builder()
-                .userId(userId)
-                .experienceGained((int) PET_EXPERIENCE)
-                .totalExperience(updatedCharacter.getExperience())
-                .currentLevel(updatedCharacter.getLevel())
-                .dailyGameCount(user.getDailyPetCount()) // 쓰다듬기 횟수를 게임 횟수 필드로 재사용
-                .remainingDailyGames(DAILY_PET_LIMIT - user.getDailyPetCount())
-                .message(String.format("쓰다듬기 완료! 경험치 %d를 획득했습니다. (남은 쓰다듬기: %d회)",
-                        PET_EXPERIENCE, DAILY_PET_LIMIT - user.getDailyPetCount()))
-                .completedAt(LocalDateTime.now())
-                .build();
-    }
-
-    /**
-     * 사용자의 일일 쓰다듬기 완료 현황 조회
-     */
-    public int getRemainingDailyPets(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("유저 없음"));
-
-        LocalDate today = LocalDate.now();
-
-        // 오늘이 아니면 3번 모두 가능
-        if (user.getLastPetDate() == null || !user.getLastPetDate().equals(today)) {
-            return DAILY_PET_LIMIT;
-        }
-
-        return DAILY_PET_LIMIT - user.getDailyPetCount();
     }
 }

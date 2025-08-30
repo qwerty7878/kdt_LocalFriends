@@ -103,4 +103,16 @@ public class User {
 
     @Column(name = "last_pet_date")
     private LocalDate lastPetDate;
+
+    // 먹이주기 관련 필드
+    @Column(name = "daily_feed_count")
+    @Builder.Default
+    private Integer dailyFeedCount = 0;
+
+    @Column(name = "last_feed_date")
+    private LocalDate lastFeedDate;
+
+    // 올 컴플릿 보너스 관련 필드
+    @Column(name = "last_bonus_date")
+    private LocalDate lastBonusDate;
 }

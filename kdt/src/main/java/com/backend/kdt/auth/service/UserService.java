@@ -6,6 +6,8 @@ import com.backend.kdt.auth.entity.Gender;
 import com.backend.kdt.auth.entity.User;
 import com.backend.kdt.auth.repository.UserRepository;
 import com.backend.kdt.auth.security.JwtService;
+import com.backend.kdt.character.service.CharacterService;
+import com.backend.kdt.character.entity.CharacterType;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class UserService {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CharacterService characterService;
 
     public User getUserByUserName(String userName) {
         return userRepository.findByUserName(userName)
@@ -93,10 +96,22 @@ public class UserService {
                 .gongbangAhjimaCount(0)
                 .carCrownCount(0)
                 .roseCount(0)
+                // 새로 추가된 필드들 초기화
+                .dailyFeedCount(0)
+                .lastFeedDate(null)
+                .lastBonusDate(null)
                 .build();
 
         User savedUser = userRepository.save(user);
-        log.info("사용자 등록 완료: {}", savedUser.getUserName());
+
+        // 회원가입과 동시에 기본 캐릭터 생성
+        try {
+            characterService.createCharacter(savedUser.getId(), "알", CharacterType.EGG);
+            log.info("사용자 및 기본 캐릭터 생성 완료: {}", savedUser.getUserName());
+        } catch (Exception e) {
+            log.warn("캐릭터 생성 실패, 나중에 자동 생성됩니다: userId={}, error={}", savedUser.getId(), e.getMessage());
+        }
+
         return savedUser;
     }
 

@@ -110,14 +110,4 @@ public class ProductController {
         boolean isCompleted = productService.isWatchCompleted(userId);
         return ResponseEntity.ok(ApiResponse.onSuccess(isCompleted));
     }
-
-
-    // 게임 완료 + COSMETIC 아이템 지급
-    @PostMapping("/complete-game")
-    @Operation(summary = "게임 완료", description = "게임 완료 시 치장품 1개를 지급합니다. (제한 없음)")
-    public ResponseEntity<ApiResponse<GameCompletionResponseDto>> completeGame(
-            @Parameter(description = "사용자 ID") @RequestParam Long userId) {
-        GameCompletionResponseDto response = productService.completeGame(userId);
-        return ResponseEntity.ok(ApiResponse.onSuccess(response));
-    }
 }

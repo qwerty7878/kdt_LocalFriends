@@ -7,6 +7,7 @@ import com.backend.kdt.auth.dto.RegisterRequest;
 import com.backend.kdt.auth.entity.User;
 import com.backend.kdt.auth.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -17,6 +18,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -128,6 +131,48 @@ public class RegisterController {
                     ApiResponse.onFailure("INTERNAL_ERROR", "로그아웃 처리 중 오류가 발생했습니다."),
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    @GetMapping("/{userId}")
+    @Operation(summary = "사용자 정보 조회 (ID로)", description = "사용자 ID로 사용자 정보를 조회합니다.")
+    public ResponseEntity<ApiResponse<LoginResponse>> getUserById(
+            @Parameter(description = "사용자 ID") @PathVariable Long userId) {
+        try {
+            User user = userService.getUserById(userId);
+            LoginResponse userInfo = userService.loginResponse(user);
+            return ResponseEntity.ok(ApiResponse.onSuccess(userInfo));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.onFailure("USER_NOT_FOUND", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.onFailure("INTERNAL_ERROR", "사용자 정보 조회 중 오류가 발생했습니다."));
+        }
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자의 정보를 조회합니다.")
+    public ResponseEntity<ApiResponse<LoginResponse>> getMyInfo() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.onFailure("UNAUTHORIZED", "로그인이 필요합니다."));
+            }
+
+            String userName = ((UserDetails) authentication.getPrincipal()).getUsername();
+            User user = userService.getUserByUserName(userName);
+            LoginResponse userInfo = userService.loginResponse(user);
+
+            return ResponseEntity.ok(ApiResponse.onSuccess(userInfo));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.onFailure("USER_NOT_FOUND", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.onFailure("INTERNAL_ERROR", "사용자 정보 조회 중 오류가 발생했습니다."));
         }
     }
 }
